@@ -1,0 +1,21 @@
+[package]
+name = "nexus-crm-desktop"
+version = "1.0.0"
+description = "NexusCRM Enterprise Desktop Client"
+authors = ["Nexus Product Team"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0.0-rc", features = [] }
+
+[dependencies]
+tauri = { version = "2.0.0-rc", features = ["tray-icon", "notification"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
