@@ -2,7 +2,10 @@ package com.crm.lead;
 
 import com.crm.common.dto.ApiResponse;
 import com.crm.common.dto.PageResponse;
+import com.crm.lead.dto.LeadConversionRequest;
+import com.crm.lead.dto.LeadConversionResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,21 +24,22 @@ public class LeadController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<Lead>>> getLeads(Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(leadService.getLeads(pageable))));
+        Page<Lead> leads = leadService.getLeads(pageable);
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.of(leads)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Lead>> getLeadById(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<Lead>> getLead(@PathVariable String id) {
         return ResponseEntity.ok(ApiResponse.success(leadService.getLeadById(id)));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Lead>> createLead(@RequestBody Lead lead) {
+    public ResponseEntity<ApiResponse<Lead>> createLead(@Valid @RequestBody Lead lead) {
         return ResponseEntity.ok(ApiResponse.success(leadService.createLead(lead), "Lead created successfully"));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Lead>> updateLead(@PathVariable String id, @RequestBody Lead lead) {
+    public ResponseEntity<ApiResponse<Lead>> updateLead(@PathVariable String id, @Valid @RequestBody Lead lead) {
         return ResponseEntity.ok(ApiResponse.success(leadService.updateLead(id, lead), "Lead updated successfully"));
     }
 
@@ -52,7 +56,14 @@ public class LeadController {
     }
 
     @PostMapping("/{id}/convert")
-    public ResponseEntity<ApiResponse<Lead>> convertLead(@PathVariable String id) {
-        return ResponseEntity.ok(ApiResponse.success(leadService.convertLead(id), "Lead converted successfully"));
+    public ResponseEntity<ApiResponse<Object>> convertLead(
+            @PathVariable String id,
+            @RequestBody(required = false) LeadConversionRequest request) {
+        if (request != null) {
+            LeadConversionResponse response = leadService.convertLead(id, request);
+            return ResponseEntity.ok(ApiResponse.success(response, "Lead converted successfully"));
+        }
+        Lead lead = leadService.convertLead(id);
+        return ResponseEntity.ok(ApiResponse.success(lead, "Lead converted successfully"));
     }
 }
