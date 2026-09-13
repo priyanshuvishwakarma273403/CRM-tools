@@ -21,6 +21,18 @@ public interface DealRepository extends JpaRepository<Deal, String> {
     @Query("SELECT d FROM Deal d WHERE d.id = :id AND d.organization.id = :orgId")
     Optional<Deal> findByIdAndOrganizationId(@Param("id") String id, @Param("orgId") String orgId);
 
-    @Query("SELECT SUM(d.value) FROM Deal d WHERE d.organization.id = :orgId AND d.stage = 'WON'")
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND (d.customerId = :customerId OR (d.company.id IS NOT NULL AND :companyId IS NOT NULL AND d.company.id = :companyId))")
+    List<Deal> findByCustomerOrCompany(@Param("orgId") String orgId, @Param("customerId") String customerId, @Param("companyId") String companyId);
+
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND d.customerId = :customerId")
+    List<Deal> findByCustomerIdAndOrganizationId(@Param("orgId") String orgId, @Param("customerId") String customerId);
+
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND d.company.id = :companyId")
+    List<Deal> findByCompanyIdAndOrganizationId(@Param("orgId") String orgId, @Param("companyId") String companyId);
+
+    @Query("SELECT SUM(d.value) FROM Deal d WHERE d.organization.id = :orgId AND d.stage = 'CLOSED_WON'")
     BigDecimal sumTotalRevenueByOrganizationId(@Param("orgId") String orgId);
+
+    @Query("SELECT COUNT(d) FROM Deal d WHERE d.organization.id = :orgId")
+    long countByOrganizationId(@Param("orgId") String orgId);
 }

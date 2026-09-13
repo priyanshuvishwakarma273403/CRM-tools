@@ -1,5 +1,7 @@
 package com.crm.deal;
 
+import com.crm.company.Company;
+import com.crm.contact.Contact;
 import com.crm.organization.Organization;
 import com.crm.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -34,6 +36,17 @@ public class Deal {
     @JoinColumn(name = "owner_id")
     private User owner;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "company_id")
+    private Company company;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "contact_id")
+    private Contact contact;
+
+    @Column(name = "customer_id")
+    private String customerId;
+
     @Column(nullable = false)
     private String title;
 
@@ -49,11 +62,28 @@ public class Deal {
     @Builder.Default
     private DealStage stage = DealStage.NEW;
 
+    @Column(name = "pipeline_id")
+    private String pipelineId;
+
+    @Column(name = "stage_id")
+    private String stageId;
+
     @Builder.Default
     private Integer probability = 10;
 
     @Column(name = "expected_close_date")
     private LocalDate expectedCloseDate;
+
+    private String tags;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(name = "loss_reason")
+    private String lossReason;
+
+    @Column(name = "win_reason")
+    private String winReason;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
