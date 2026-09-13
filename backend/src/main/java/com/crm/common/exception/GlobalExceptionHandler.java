@@ -24,6 +24,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND"));
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
+        log.warn("Bad request: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), "BAD_REQUEST"));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
         String details = ex.getBindingResult().getFieldErrors().stream()

@@ -38,4 +38,16 @@ public interface DealRepository extends JpaRepository<Deal, String> {
 
     @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND (LOWER(d.title) LIKE LOWER(CONCAT('%', :query, '%')) OR (d.tags IS NOT NULL AND LOWER(d.tags) LIKE LOWER(CONCAT('%', :query, '%'))))")
     List<Deal> searchDeals(@Param("orgId") String orgId, @Param("query") String query, Pageable pageable);
+
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND d.pipelineId = :pipelineId")
+    List<Deal> findByOrganizationIdAndPipelineId(@Param("orgId") String orgId, @Param("pipelineId") String pipelineId);
+
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND d.stage = :stage")
+    List<Deal> findByOrganizationIdAndStage(@Param("orgId") String orgId, @Param("stage") DealStage stage);
+
+    @Query("SELECT COUNT(d) FROM Deal d WHERE d.organization.id = :orgId AND d.stage = :stage")
+    long countByOrganizationIdAndStage(@Param("orgId") String orgId, @Param("stage") DealStage stage);
+
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND d.stage NOT IN (com.crm.deal.DealStage.WON, com.crm.deal.DealStage.LOST)")
+    List<Deal> findOpenDealsByOrganizationId(@Param("orgId") String orgId);
 }

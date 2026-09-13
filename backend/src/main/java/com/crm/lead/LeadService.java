@@ -41,6 +41,8 @@ public class LeadService {
     private final LeadConversionRepository leadConversionRepository;
     private final UserRepository userRepository;
     private final DomainEventPublisher domainEventPublisher;
+    private final com.crm.pipeline.PipelineRepository pipelineRepository;
+    private final com.crm.pipeline.PipelineStageRepository pipelineStageRepository;
 
     public LeadService(LeadRepository leadRepository,
                        OrganizationRepository organizationRepository,
@@ -50,7 +52,9 @@ public class LeadService {
                        DealRepository dealRepository,
                        LeadConversionRepository leadConversionRepository,
                        UserRepository userRepository,
-                       DomainEventPublisher domainEventPublisher) {
+                       DomainEventPublisher domainEventPublisher,
+                       com.crm.pipeline.PipelineRepository pipelineRepository,
+                       com.crm.pipeline.PipelineStageRepository pipelineStageRepository) {
         this.leadRepository = leadRepository;
         this.organizationRepository = organizationRepository;
         this.companyRepository = companyRepository;
@@ -60,6 +64,8 @@ public class LeadService {
         this.leadConversionRepository = leadConversionRepository;
         this.userRepository = userRepository;
         this.domainEventPublisher = domainEventPublisher;
+        this.pipelineRepository = pipelineRepository;
+        this.pipelineStageRepository = pipelineStageRepository;
     }
 
     public Page<Lead> getLeads(Pageable pageable) {
@@ -223,16 +229,35 @@ public class LeadService {
 
             BigDecimal dealValue = request.getDealValue() != null ? request.getDealValue() : BigDecimal.ZERO;
 
+            com.crm.pipeline.Pipeline defaultPipe = pipelineRepository.findByOrganizationIdAndIsDefaultTrue(orgId).orElse(null);
+            String pipeId = defaultPipe != null ? defaultPipe.getId() : null;
+            String stageId = null;
+            int prob = 25;
+            if (defaultPipe != null) {
+                java.util.List<com.crm.pipeline.PipelineStage> stages = pipelineStageRepository.findByPipelineIdOrderByOrderIndexAsc(pipeId);
+                com.crm.pipeline.PipelineStage qualStage = stages.stream()
+                        .filter(s -> "QUALIFIED".equalsIgnoreCase(s.getCode()))
+                        .findFirst()
+                        .orElse(stages.size() > 1 ? stages.get(1) : null);
+                if (qualStage != null) {
+                    stageId = qualStage.getId();
+                    prob = qualStage.getWinProbability();
+                }
+            }
+
             deal = dealRepository.save(Deal.builder()
                     .organization(org)
                     .owner(owner)
                     .company(company)
                     .contact(contact)
                     .customerId(customer != null ? customer.getId() : null)
+                    .pipelineId(pipeId)
+                    .stageId(stageId)
                     .title(dealTitle)
                     .value(dealValue)
                     .stage(DealStage.QUALIFIED)
-                    .probability(25)
+                    .probability(prob)
+                    .stageEnteredAt(LocalDateTime.now())
                     .notes("Generated from lead conversion")
                     .build());
         }

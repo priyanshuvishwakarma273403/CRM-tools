@@ -2,6 +2,9 @@ package com.crm.deal;
 
 import com.crm.common.dto.ApiResponse;
 import com.crm.common.dto.PageResponse;
+import com.crm.deal.dto.PipelineMetricsResponse;
+import com.crm.deal.dto.RevenueForecastResponse;
+import com.crm.deal.dto.UpdateDealStageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +32,17 @@ public class DealController {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(dealService.getDeals(pageable))));
     }
 
+    @GetMapping("/pipeline-metrics")
+    public ResponseEntity<ApiResponse<PipelineMetricsResponse>> getPipelineMetrics(
+            @RequestParam(required = false) String pipelineId) {
+        return ResponseEntity.ok(ApiResponse.success(dealService.getPipelineMetrics(pipelineId), "Pipeline metrics calculated successfully"));
+    }
+
+    @GetMapping("/forecast")
+    public ResponseEntity<ApiResponse<RevenueForecastResponse>> getRevenueForecast() {
+        return ResponseEntity.ok(ApiResponse.success(dealService.getRevenueForecast(), "Revenue forecast generated successfully"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Deal>> getDealById(@PathVariable String id) {
         return ResponseEntity.ok(ApiResponse.success(dealService.getDealById(id)));
@@ -46,8 +60,14 @@ public class DealController {
 
     @PatchMapping("/{id}/stage")
     public ResponseEntity<ApiResponse<Deal>> updateStage(@PathVariable String id, @RequestBody Map<String, String> body) {
-        DealStage stage = DealStage.valueOf(body.get("stage"));
-        return ResponseEntity.ok(ApiResponse.success(dealService.updateStage(id, stage), "Deal stage updated"));
+        UpdateDealStageRequest req = UpdateDealStageRequest.builder()
+                .stage(body.get("stage"))
+                .stageId(body.get("stageId"))
+                .winReason(body.get("winReason"))
+                .lossReason(body.get("lossReason"))
+                .notes(body.get("notes"))
+                .build();
+        return ResponseEntity.ok(ApiResponse.success(dealService.updateStage(id, req), "Deal stage updated"));
     }
 
     @DeleteMapping("/{id}")

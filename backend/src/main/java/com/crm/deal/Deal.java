@@ -85,6 +85,10 @@ public class Deal {
     @Column(name = "win_reason")
     private String winReason;
 
+    @Column(name = "stage_entered_at")
+    @Builder.Default
+    private LocalDateTime stageEnteredAt = LocalDateTime.now();
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
