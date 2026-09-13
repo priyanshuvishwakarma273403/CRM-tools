@@ -186,7 +186,7 @@ public class LeadService {
         // 2. Create Contact
         Contact contact = Contact.builder()
                 .organization(org)
-                .company(company)
+                .companyId(company != null ? company.getId() : null)
                 .firstName(lead.getFirstName())
                 .lastName(lead.getLastName() != null ? lead.getLastName() : "")
                 .email(lead.getEmail())

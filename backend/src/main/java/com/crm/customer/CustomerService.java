@@ -78,13 +78,13 @@ public class CustomerService {
 
         // Calculate dynamic pipeline metrics
         BigDecimal activePipelineValue = deals.stream()
-                .filter(d -> d.getStage() != DealStage.CLOSED_LOST)
+                .filter(d -> d.getStage() != DealStage.LOST)
                 .map(Deal::getValue)
                 .filter(v -> v != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long activeDealsCount = deals.stream()
-                .filter(d -> d.getStage() != DealStage.CLOSED_WON && d.getStage() != DealStage.CLOSED_LOST)
+                .filter(d -> d.getStage() != DealStage.WON && d.getStage() != DealStage.LOST)
                 .count();
 
         Map<String, Object> c360 = new HashMap<>();

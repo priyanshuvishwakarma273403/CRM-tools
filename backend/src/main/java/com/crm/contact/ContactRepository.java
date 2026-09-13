@@ -20,7 +20,7 @@ public interface ContactRepository extends JpaRepository<Contact, String> {
     @Query("SELECT c FROM Contact c WHERE c.id = :id AND c.organization.id = :orgId")
     Optional<Contact> findByIdAndOrganizationId(@Param("id") String id, @Param("orgId") String orgId);
 
-    @Query("SELECT c FROM Contact c WHERE c.organization.id = :orgId AND c.company.id = :companyId")
+    @Query("SELECT c FROM Contact c WHERE c.organization.id = :orgId AND c.companyId = :companyId")
     List<Contact> findByCompanyIdAndOrganizationId(@Param("orgId") String orgId, @Param("companyId") String companyId);
 
     @Query("SELECT COUNT(c) FROM Contact c WHERE c.organization.id = :orgId")

@@ -317,9 +317,7 @@ public class WorkflowEngineService {
                             .organizationId(orgId)
                             .actionType("WORKFLOW_" + rule.getName().toUpperCase().replace(" ", "_"))
                             .title(title)
-                            .description(description)
-                            .entityType(event.getEntityType())
-                            .entityId(event.getEntityId())
+                            .description(description + " [Entity: " + event.getEntityType() + ":" + event.getEntityId() + "]")
                             .payloadJson(objectMapper.writeValueAsString(event.getPayload()))
                             .build();
 
