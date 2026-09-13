@@ -13,6 +13,9 @@ import java.util.Optional;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, String> {
     Page<Customer> findAllByOrganizationId(String organizationId, Pageable pageable);
+    List<Customer> findAllByOrganizationId(String organizationId);
+    Optional<Customer> findFirstByOrganizationIdAndPrimaryContactId(String organizationId, String primaryContactId);
+    Optional<Customer> findFirstByOrganizationIdAndCompanyId(String organizationId, String companyId);
     Optional<Customer> findByIdAndOrganizationId(String id, String organizationId);
     long countByOrganizationId(String organizationId);
 

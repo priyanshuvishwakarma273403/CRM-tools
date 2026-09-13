@@ -25,4 +25,8 @@ public interface LeadRepository extends JpaRepository<Lead, String> {
 
     @Query("SELECT l FROM Lead l WHERE l.organization.id = :orgId AND l.deletedAt IS NULL AND (LOWER(l.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(l.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(l.companyName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(l.email) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Lead> searchLeads(@Param("orgId") String orgId, @Param("query") String query, Pageable pageable);
+
+    Optional<Lead> findFirstByOrganizationIdAndEmailIgnoreCaseAndDeletedAtIsNull(String orgId, String email);
+
+    Optional<Lead> findFirstByOrganizationIdAndPhoneAndDeletedAtIsNull(String orgId, String phone);
 }

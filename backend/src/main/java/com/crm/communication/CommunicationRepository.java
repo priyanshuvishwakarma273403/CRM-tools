@@ -12,4 +12,7 @@ public interface CommunicationRepository extends JpaRepository<CommunicationLog,
     Page<CommunicationLog> findAllByOrganizationIdOrderByCreatedAtDesc(String organizationId, Pageable pageable);
     List<CommunicationLog> findAllByOrganizationIdAndCustomerIdOrderByCreatedAtDesc(String organizationId, String customerId);
     List<CommunicationLog> findAllByOrganizationIdAndLeadIdOrderByCreatedAtDesc(String organizationId, String leadId);
+    List<CommunicationLog> findAllByOrganizationIdAndDealIdOrderByCreatedAtDesc(String organizationId, String dealId);
+    List<CommunicationLog> findAllByOrganizationIdAndTicketIdOrderByCreatedAtDesc(String organizationId, String ticketId);
+    List<CommunicationLog> findAllByOrganizationIdAndThreadIdOrderByCreatedAtAsc(String organizationId, String threadId);
 }
