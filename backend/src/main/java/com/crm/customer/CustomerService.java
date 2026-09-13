@@ -9,6 +9,7 @@ import com.crm.deal.DealStage;
 import com.crm.security.TenantContext;
 import com.crm.task.Task;
 import com.crm.task.TaskRepository;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,17 +29,23 @@ public class CustomerService {
     private final CommunicationRepository communicationRepository;
     private final ContactRepository contactRepository;
     private final TaskRepository taskRepository;
+    private final ObjectProvider<com.crm.support.TicketRepository> ticketRepositoryProvider;
+    private final ObjectProvider<com.crm.timeline.TimelineEventRepository> timelineEventRepositoryProvider;
 
     public CustomerService(CustomerRepository customerRepository,
                            DealRepository dealRepository,
                            CommunicationRepository communicationRepository,
                            ContactRepository contactRepository,
-                           TaskRepository taskRepository) {
+                           TaskRepository taskRepository,
+                           ObjectProvider<com.crm.support.TicketRepository> ticketRepositoryProvider,
+                           ObjectProvider<com.crm.timeline.TimelineEventRepository> timelineEventRepositoryProvider) {
         this.customerRepository = customerRepository;
         this.dealRepository = dealRepository;
         this.communicationRepository = communicationRepository;
         this.contactRepository = contactRepository;
         this.taskRepository = taskRepository;
+        this.ticketRepositoryProvider = ticketRepositoryProvider;
+        this.timelineEventRepositoryProvider = timelineEventRepositoryProvider;
     }
 
     public Page<Customer> getCustomers(Pageable pageable) {
@@ -53,9 +60,9 @@ public class CustomerService {
     }
 
     /**
-     * Customer 360 Aggregation.
+     * Complete Customer 360 Aggregation.
      * Consolidates customer profile, strictly isolated active deals, communications timeline,
-     * associated contacts, related tasks, and health metrics into one unified payload.
+     * associated contacts, related tasks, support tickets, and chronological timeline events into one unified payload.
      */
     public Map<String, Object> getCustomer360(String id) {
         Customer customer = getCustomerById(id);
@@ -72,6 +79,18 @@ public class CustomerService {
 
         // Associated tasks
         List<Task> tasks = taskRepository.findByRelatedEntity(orgId, "CUSTOMER", id);
+
+        // Associated support tickets
+        var ticketRepo = ticketRepositoryProvider.getIfAvailable();
+        List<?> tickets = (ticketRepo != null)
+                ? ticketRepo.findByOrganizationIdAndCustomerIdOrderByCreatedAtDesc(orgId, id)
+                : Collections.emptyList();
+
+        // Associated timeline events
+        var timelineRepo = timelineEventRepositoryProvider.getIfAvailable();
+        List<?> timelineEvents = (timelineRepo != null)
+                ? timelineRepo.findByOrganizationIdAndEntityTypeAndEntityIdOrderByCreatedAtDesc(orgId, "CUSTOMER", id)
+                : Collections.emptyList();
 
         // Communications timeline
         var communications = communicationRepository.findAllByOrganizationIdAndCustomerIdOrderByCreatedAtDesc(orgId, id);
@@ -92,11 +111,14 @@ public class CustomerService {
         c360.put("deals", deals);
         c360.put("contacts", contacts);
         c360.put("tasks", tasks);
+        c360.put("tickets", tickets);
+        c360.put("timeline", timelineEvents);
         c360.put("communications", communications);
         c360.put("metrics", Map.of(
                 "activeDealsCount", activeDealsCount,
                 "activePipelineValue", activePipelineValue,
-                "totalDealsCount", deals.size()
+                "totalDealsCount", deals.size(),
+                "openTicketsCount", tickets.size()
         ));
         c360.put("healthSummary", Map.of(
                 "healthScore", customer.getHealthScore() != null ? customer.getHealthScore() : 85,

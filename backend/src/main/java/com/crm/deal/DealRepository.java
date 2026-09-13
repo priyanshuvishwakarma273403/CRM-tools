@@ -30,9 +30,12 @@ public interface DealRepository extends JpaRepository<Deal, String> {
     @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND d.company.id = :companyId")
     List<Deal> findByCompanyIdAndOrganizationId(@Param("orgId") String orgId, @Param("companyId") String companyId);
 
-    @Query("SELECT SUM(d.value) FROM Deal d WHERE d.organization.id = :orgId AND d.stage = 'CLOSED_WON'")
+    @Query("SELECT SUM(d.value) FROM Deal d WHERE d.organization.id = :orgId AND d.stage = 'WON'")
     BigDecimal sumTotalRevenueByOrganizationId(@Param("orgId") String orgId);
 
     @Query("SELECT COUNT(d) FROM Deal d WHERE d.organization.id = :orgId")
     long countByOrganizationId(@Param("orgId") String orgId);
+
+    @Query("SELECT d FROM Deal d WHERE d.organization.id = :orgId AND (LOWER(d.title) LIKE LOWER(CONCAT('%', :query, '%')) OR (d.tags IS NOT NULL AND LOWER(d.tags) LIKE LOWER(CONCAT('%', :query, '%'))))")
+    List<Deal> searchDeals(@Param("orgId") String orgId, @Param("query") String query, Pageable pageable);
 }

@@ -25,4 +25,7 @@ public interface ContactRepository extends JpaRepository<Contact, String> {
 
     @Query("SELECT COUNT(c) FROM Contact c WHERE c.organization.id = :orgId")
     long countByOrganizationId(@Param("orgId") String orgId);
+
+    @Query("SELECT c FROM Contact c WHERE c.organization.id = :orgId AND (LOWER(c.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(c.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR (c.email IS NOT NULL AND LOWER(c.email) LIKE LOWER(CONCAT('%', :query, '%'))))")
+    List<Contact> searchContacts(@Param("orgId") String orgId, @Param("query") String query, Pageable pageable);
 }

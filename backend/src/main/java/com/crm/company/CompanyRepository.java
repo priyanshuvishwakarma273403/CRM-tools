@@ -25,4 +25,7 @@ public interface CompanyRepository extends JpaRepository<Company, String> {
 
     @Query("SELECT COUNT(c) FROM Company c WHERE c.organization.id = :orgId")
     long countByOrganizationId(@Param("orgId") String orgId);
+
+    @Query("SELECT c FROM Company c WHERE c.organization.id = :orgId AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :query, '%')) OR (c.website IS NOT NULL AND LOWER(c.website) LIKE LOWER(CONCAT('%', :query, '%'))))")
+    List<Company> searchCompanies(@Param("orgId") String orgId, @Param("query") String query, Pageable pageable);
 }
