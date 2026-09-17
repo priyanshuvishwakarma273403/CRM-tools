@@ -64,39 +64,39 @@ CRM OS is designed according to modern distributed systems principles: high cohe
 ### 360° Visual Component Topology
 
 ```mermaid
-flowchart TD
-    subgraph CLIENTS["📱 Presentation Layer (Zero Duplicated Logic)"]
-        Web["🌐 Web Client<br/>React 18 • Vite • Tailwind<br/>(apps/web)"]
-        Desktop["💻 Desktop Client<br/>Tauri 2.0 • Rust • SQLite<br/>(apps/desktop)"]
-        Mobile["📱 Mobile Client<br/>React Native • Expo 51<br/>(apps/mobile)"]
+graph TD
+    subgraph CLIENTS [Presentation Layer - Zero Duplicated Logic]
+        Web[Web Client - React 18 / Vite / Tailwind]
+        Desktop[Desktop Client - Tauri 2.0 / Rust / SQLite]
+        Mobile[Mobile Client - React Native / Expo 51]
     end
 
-    subgraph INGRESS["🛡️ Ingress & Security Boundary"]
-        Gateway["⚡ Reverse Proxy / Edge Ingress<br/>SSL Termination • Rate Limiting • CORS"]
+    subgraph INGRESS [Ingress & Security Boundary]
+        Gateway[Reverse Proxy / Edge Ingress - SSL & Rate Limiting]
     end
 
-    subgraph BACKEND["☕ Authoritative Backend Core (Single Source of Truth)"]
-        SpringCore["🏛️ Spring Boot 3.2.3 Core API (/api/v1)<br/>Java 17/21 • Spring Data JPA • Security"]
-        TenantCtx["🔒 TenantContext ThreadLocal<br/>Strict Multi-Tenant Isolation Filter"]
-        EventPub["📢 Central Event Publisher<br/>WebSocket STOMP + CloudEvents Bus"]
-        MCPGateway["🔌 MCP Gateway & Control Plane<br/>Tool Discovery • Consent Guard • Audit Trail"]
+    subgraph BACKEND [Authoritative Backend Core - Single Source of Truth]
+        SpringCore[Spring Boot 3.2.3 Core API - /api/v1]
+        TenantCtx[TenantContext ThreadLocal - Multi-Tenant Isolation]
+        EventPub[Central Event Publisher - WebSocket & CloudEvents]
+        MCPGateway[MCP Gateway & Control Plane - Discovery & Audit]
     end
 
-    subgraph DATASTORES["💾 Distributed Storage & Caching Layer"]
-        Postgres[("🐘 PostgreSQL 16<br/>Canonical Schema (Flyway V1-V5)<br/>B-Tree & Composite Tenant Indexes")]
-        Redis[("⚡ Redis 7 Cluster<br/>Cache • Distributed Locks<br/>Token Revocation Blacklist")]
-        Kafka[("📨 Apache Kafka 7.5<br/>CloudEvents Asynchronous Bus<br/>Persistent Event Sourcing")]
+    subgraph DATASTORES [Distributed Storage & Caching Layer]
+        Postgres[(PostgreSQL 16 Database - Canonical Schema)]
+        Redis[(Redis 7 Cache - Distributed Locks & Token Blacklist)]
+        Kafka[(Apache Kafka 7.5 - CloudEvents Event Bus)]
     end
 
-    subgraph SATELLITES["🤖 Specialized Satellite Microservices"]
-        AIService["🧠 Python AI Platform (:8000)<br/>FastAPI • PyTorch • 5 Domain Agents<br/>AI Context Firewall • 'Ask My CRM'"]
-        PerfEngine["⚡ Rust Native Engine (:50051)<br/>Axum • Tokio • Rayon SIMD<br/>Monte Carlo Simulations • Dedupe"]
-        MCPApps["🌐 External MCP Ecosystem<br/>Claude Desktop • Cursor • Slack • Gmail"]
+    subgraph SATELLITES [Specialized Satellite Microservices]
+        AIService[Python AI Platform :8000 - 5 Domain Agents]
+        PerfEngine[Rust Native Engine :50051 - SIMD Dedupe & Math]
+        MCPApps[External MCP Apps - Claude, Cursor, Slack, Gmail]
     end
 
-    Web -->|HTTPS / WSS (JWT)| Gateway
-    Desktop -->|HTTPS / WSS (JWT)| Gateway
-    Mobile -->|HTTPS / WSS (JWT)| Gateway
+    Web -->|HTTPS / WSS / JWT| Gateway
+    Desktop -->|HTTPS / WSS / JWT| Gateway
+    Mobile -->|HTTPS / WSS / JWT| Gateway
 
     Gateway --> SpringCore
     SpringCore --> TenantCtx
@@ -105,23 +105,15 @@ flowchart TD
     SpringCore --> EventPub
     EventPub --> Kafka
 
-    SpringCore <-->|REST / mTLS| AIService
-    SpringCore <-->|HTTP / JSON| PerfEngine
-    SpringCore <-->|MCP Protocol (SSE)| MCPGateway
-    MCPGateway <--> MCPApps
+    SpringCore -->|REST / mTLS| AIService
+    AIService -->|AI Insights| SpringCore
+    SpringCore -->|HTTP / JSON| PerfEngine
+    PerfEngine -->|Calculations| SpringCore
+    SpringCore -->|MCP SSE Protocol| MCPGateway
+    MCPGateway -->|Tool Execution| MCPApps
 
-    Desktop -.->|Local Offline Queue| DesktopSQLite[(SQLite Cache)]
-    Mobile -.->|Local Offline Queue| MobileSQLite[(SQLite Cache)]
-
-    classDef clientStyle fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff;
-    classDef coreStyle fill:#0f172a,stroke:#4ade80,stroke-width:2px,color:#fff;
-    classDef storeStyle fill:#1e1e38,stroke:#f59e0b,stroke-width:2px,color:#fff;
-    classDef satStyle fill:#2a1b3d,stroke:#ec4899,stroke-width:2px,color:#fff;
-
-    class Web,Desktop,Mobile clientStyle;
-    class SpringCore,TenantCtx,EventPub,MCPGateway coreStyle;
-    class Postgres,Redis,Kafka storeStyle;
-    class AIService,PerfEngine,MCPApps satStyle;
+    Desktop -.->|Offline Sync Queue| DesktopSQLite[(SQLite Cache)]
+    Mobile -.->|Offline Sync Queue| MobileSQLite[(SQLite Cache)]
 ```
 
 ---
