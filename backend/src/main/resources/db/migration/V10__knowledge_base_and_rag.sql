@@ -1,0 +1,24 @@
+-- V10: Knowledge Base Articles Expansion and RAG Vector Retrieval
+
+ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS summary TEXT;
+ALTER TABLE knowledge_articles ADD COLUMN IF NOT EXISTS tags VARCHAR(255);
+
+CREATE INDEX IF NOT EXISTS idx_articles_status_org ON knowledge_articles(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_articles_slug ON knowledge_articles(organization_id, slug);
+CREATE INDEX IF NOT EXISTS idx_embeddings_org_type ON embeddings(organization_id, entity_type);
+
+-- Seed default enterprise knowledge articles for org-demo-1
+INSERT INTO knowledge_articles (id, organization_id, title, slug, summary, content, category, status, view_count, created_at, updated_at)
+VALUES
+('art-1', 'org-demo-1', 'Enterprise SLA Tiers & Escalation Protocols', 'enterprise-sla-tiers-escalation-protocols', 'Defines standard, priority, and critical response times and escalation matrices.', 'Enterprise customers are entitled to 24/7 dedicated support coverage. Critical Priority issues require initial response within 1 hour and hourly status updates until full resolution. High Priority issues must be acknowledged within 4 hours. Escalations are automatically forwarded to the tier-3 engineering on-call team if an incident remains unacknowledged past the target SLA window.', 'SUPPORT', 'PUBLISHED', 42, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('art-2', 'org-demo-1', 'Subscription Billing, Refund & Cancellation Policy', 'subscription-billing-refund-cancellation-policy', 'Official policies governing annual contracts, seat licensing, and cancellation terms.', 'All annual subscriptions renew automatically on their anniversary date unless written cancellation is provided at least 30 days prior to contract expiration. Refunds are calculated on a prorated basis for enterprise license seats cancelled within the initial 14-day evaluation window. Invoices are issued with Net 30 payment terms and accept ACH, wire transfer, or corporate credit cards.', 'BILLING', 'PUBLISHED', 88, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('art-3', 'org-demo-1', 'SOC2 Security, Encryption & Multi-Tenant Data Isolation', 'soc2-security-encryption-multi-tenant-data-isolation', 'Overview of encryption at rest, tenant boundaries, and SOC2 compliance controls.', 'The CRM platform implements strict logical multi-tenancy. Every database query is isolated by organization_id enforced through TenantContext and database-level constraints. Customer data is encrypted in transit using TLS 1.3 and at rest using AES-256. Audit logs are immutable and stream to centralized security telemetry for SOC2 Type II compliance.', 'SECURITY', 'PUBLISHED', 156, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('art-4', 'org-demo-1', 'REST API Authentication & Rate Limiting Guidelines', 'rest-api-authentication-rate-limiting-guidelines', 'Developer guide for API keys, OAuth tokens, and rate limits.', 'All REST API endpoints require a valid Bearer JWT or Developer API Key passed in the Authorization header. Rate limits are enforced on a per-organization basis: Standard tiers allow up to 120 requests per minute, while Enterprise tiers support up to 600 requests per minute with burst capacity. When rate limits are exceeded, the server returns HTTP 429 Too Many Requests with a Retry-After header.', 'INTEGRATIONS', 'PUBLISHED', 67, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Seed initial embeddings for seeded articles
+INSERT INTO embeddings (id, organization_id, entity_type, entity_id, content_chunk, vector_data, created_at)
+VALUES
+('emb-1', 'org-demo-1', 'KNOWLEDGE_ARTICLE', 'art-1', 'Enterprise customers are entitled to 24/7 dedicated support coverage. Critical Priority issues require initial response within 1 hour and hourly status updates until full resolution. High Priority issues must be acknowledged within 4 hours.', '[0.12, 0.45, -0.32, 0.65, 0.18, -0.05, 0.77, 0.31]', CURRENT_TIMESTAMP),
+('emb-2', 'org-demo-1', 'KNOWLEDGE_ARTICLE', 'art-2', 'All annual subscriptions renew automatically on their anniversary date unless written cancellation is provided at least 30 days prior to contract expiration. Refunds are calculated on a prorated basis for enterprise license seats.', '[-0.22, 0.55, 0.12, -0.45, 0.68, 0.35, -0.17, 0.81]', CURRENT_TIMESTAMP),
+('emb-3', 'org-demo-1', 'KNOWLEDGE_ARTICLE', 'art-3', 'The CRM platform implements strict logical multi-tenancy. Every database query is isolated by organization_id enforced through TenantContext and database-level constraints. Customer data is encrypted in transit using TLS 1.3.', '[0.42, -0.15, 0.82, 0.25, -0.38, 0.65, 0.57, -0.21]', CURRENT_TIMESTAMP),
+('emb-4', 'org-demo-1', 'KNOWLEDGE_ARTICLE', 'art-4', 'All REST API endpoints require a valid Bearer JWT or Developer API Key passed in the Authorization header. Rate limits are enforced on a per-organization basis: Standard tiers allow up to 120 requests per minute.', '[0.35, 0.22, -0.15, 0.78, 0.44, -0.25, 0.63, 0.11]', CURRENT_TIMESTAMP);

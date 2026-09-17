@@ -8,6 +8,8 @@ import com.crm.customer.Customer;
 import com.crm.customer.CustomerRepository;
 import com.crm.deal.Deal;
 import com.crm.deal.DealRepository;
+import com.crm.knowledge.KnowledgeArticle;
+import com.crm.knowledge.KnowledgeArticleRepository;
 import com.crm.lead.Lead;
 import com.crm.lead.LeadRepository;
 import com.crm.security.TenantContext;
@@ -27,19 +29,22 @@ public class GlobalSearchService {
     private final CompanyRepository companyRepository;
     private final CustomerRepository customerRepository;
     private final TicketRepository ticketRepository;
+    private final KnowledgeArticleRepository knowledgeArticleRepository;
 
     public GlobalSearchService(LeadRepository leadRepository,
                                DealRepository dealRepository,
                                ContactRepository contactRepository,
                                CompanyRepository companyRepository,
                                CustomerRepository customerRepository,
-                               TicketRepository ticketRepository) {
+                               TicketRepository ticketRepository,
+                               KnowledgeArticleRepository knowledgeArticleRepository) {
         this.leadRepository = leadRepository;
         this.dealRepository = dealRepository;
         this.contactRepository = contactRepository;
         this.companyRepository = companyRepository;
         this.customerRepository = customerRepository;
         this.ticketRepository = ticketRepository;
+        this.knowledgeArticleRepository = knowledgeArticleRepository;
     }
 
     public Map<String, Object> executeSearch(String query, String typesFilter, int limit) {
@@ -55,6 +60,7 @@ public class GlobalSearchService {
         List<Company> companies = Collections.emptyList();
         List<Customer> customers = Collections.emptyList();
         List<Ticket> tickets = Collections.emptyList();
+        List<KnowledgeArticle> articles = Collections.emptyList();
 
         List<SearchResultItem> unifiedResults = new ArrayList<>();
 
@@ -140,6 +146,20 @@ public class GlobalSearchService {
             }
         }
 
+        if (types.contains("ARTICLES") || types.contains("KNOWLEDGE") || types.contains("ALL")) {
+            articles = knowledgeArticleRepository.searchArticles(orgId, query, pageRequest);
+            for (KnowledgeArticle article : articles) {
+                unifiedResults.add(SearchResultItem.builder()
+                        .id(article.getId())
+                        .type("ARTICLE")
+                        .title(article.getTitle())
+                        .subtitle(article.getCategory() != null ? article.getCategory() : "Knowledge Base")
+                        .status(article.getStatus() != null ? article.getStatus().name() : null)
+                        .url("/knowledge/" + article.getSlug())
+                        .build());
+            }
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("query", query);
         response.put("totalMatches", unifiedResults.size());
@@ -151,6 +171,7 @@ public class GlobalSearchService {
         response.put("companies", companies);
         response.put("customers", customers);
         response.put("tickets", tickets);
+        response.put("articles", articles);
 
         return response;
     }
