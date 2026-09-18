@@ -8,7 +8,6 @@ class ApiClient {
   constructor() {
     this.baseUrl = BASE_URL;
     this.isRefreshing = false;
-    this.refreshSubscribers = [];
   }
 
   getHeaders(customHeaders = {}) {
@@ -21,8 +20,25 @@ class ApiClient {
     };
   }
 
+  buildUrl(endpoint, params) {
+    let url = `${this.baseUrl}${endpoint}`;
+    if (params && typeof params === 'object') {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.append(key, value);
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
+    }
+    return url;
+  }
+
   async request(endpoint, options = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = this.buildUrl(endpoint, options.params);
     const headers = this.getHeaders(options.headers);
 
     const config = {
@@ -95,15 +111,15 @@ class ApiClient {
   }
 
   post(endpoint, body, options) {
-    return this.request(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) });
+    return this.request(endpoint, { ...options, method: 'POST', body: body ? JSON.stringify(body) : undefined });
   }
 
   put(endpoint, body, options) {
-    return this.request(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) });
+    return this.request(endpoint, { ...options, method: 'PUT', body: body ? JSON.stringify(body) : undefined });
   }
 
   patch(endpoint, body, options) {
-    return this.request(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) });
+    return this.request(endpoint, { ...options, method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
   }
 
   delete(endpoint, options) {

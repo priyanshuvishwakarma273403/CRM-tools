@@ -12,288 +12,247 @@ import {
   reportsApi,
   usersApi,
   approvalsApi,
+  ticketsApi,
+  knowledgeApi,
+  developerApi,
 } from '../api';
 
-const getStore = (key, initial = []) => {
-  const saved = localStorage.getItem(`nexus_crm_${key}`);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        // Automatically purge any legacy demo seed data from previous dev sessions
-        const clean = parsed.filter((item) => {
-          const id = item?.id ? String(item.id) : '';
-          const name = item?.name || item?.title || '';
-          const isLegacyDemo =
-            id.startsWith('comp_') ||
-            id.startsWith('lead_') ||
-            id.startsWith('deal_') ||
-            id.startsWith('cont_') ||
-            id.startsWith('task_') ||
-            id.startsWith('user_') ||
-            id.startsWith('act_') ||
-            name.includes('Apex Global') ||
-            name.includes('Acme Enterprise') ||
-            name.includes('BioGenix');
-          return !isLegacyDemo;
-        });
-        if (clean.length !== parsed.length) {
-          localStorage.setItem(`nexus_crm_${key}`, JSON.stringify(clean));
-        }
-        return clean;
-      }
-      return parsed;
-    } catch (e) {
-      return [];
-    }
-  }
-  return initial;
-};
-
-const setStore = (key, data) => {
-  localStorage.setItem(`nexus_crm_${key}`, JSON.stringify(data));
+const extractList = (res) => {
+  if (!res) return [];
+  const payload = res.data !== undefined ? res.data : res;
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.content)) return payload.content;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
 };
 
 export const api = {
   // Auth API
   auth: {
     login: async (email, password) => {
-      try {
-        const res = await authApi.login({ email, password });
-        if (res.data?.accessToken) {
-          return res;
-        }
-      } catch (e) {
-        // Fallback for offline local session
-      }
-      const rawName = email ? email.split('@')[0].replace(/[._-]/g, ' ') : 'User';
-      const cleanName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-      return {
-        success: true,
-        data: {
-          accessToken: `nexus-jwt-${Date.now()}`,
-          refreshToken: `nexus-refresh-${Date.now()}`,
-          user: {
-            id: `usr_${Date.now()}`,
-            email: email || 'user@nexus.io',
-            fullName: cleanName,
-            name: cleanName,
-            role: 'ADMIN',
-          },
-          organization: {
-            id: `org_${Date.now()}`,
-            name: 'Nexus Workspace',
-          },
-        },
-      };
+      const res = await authApi.login({ email, password });
+      return res;
     },
     register: async (data) => authApi.register(data),
     logout: async () => authApi.logout(),
+    me: async () => authApi.getCurrentUser(),
   },
 
   // Leads API
   leads: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await leadsApi.getAll();
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('leads', []);
+        const res = await leadsApi.getAll(params);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend leads API unavailable:', e.message);
+        return [];
+      }
     },
     getById: async (id) => {
       try {
         const res = await leadsApi.getById(id);
-        if (res.data) return res.data;
-      } catch (e) {}
-      return getStore('leads', []).find((l) => l.id === id);
+        return res?.data || res;
+      } catch (e) {
+        return null;
+      }
     },
     create: async (lead) => {
-      try {
-        const res = await leadsApi.create(lead);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('leads', []);
-      const newLead = {
-        ...lead,
-        id: `lead_${Date.now()}`,
-        createdAt: new Date().toISOString().split('T')[0],
-        leadScore: lead.leadScore || 65,
-      };
-      const updated = [newLead, ...list];
-      setStore('leads', updated);
-      return newLead;
+      const res = await leadsApi.create(lead);
+      return res?.data || res;
     },
     update: async (id, data) => {
-      try {
-        const res = await leadsApi.update(id, data);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('leads', []);
-      const updated = list.map((l) => (l.id === id ? { ...l, ...data } : l));
-      setStore('leads', updated);
-      return updated.find((l) => l.id === id);
+      const res = await leadsApi.update(id, data);
+      return res?.data || res;
+    },
+    updateStatus: async (id, status) => {
+      const res = await leadsApi.updateStatus(id, status);
+      return res?.data || res;
+    },
+    convert: async (id, request) => {
+      const res = await leadsApi.convert(id, request);
+      return res?.data || res;
     },
     delete: async (id) => {
-      try {
-        await leadsApi.delete(id);
-      } catch (e) {}
-      const list = getStore('leads', []);
-      const updated = list.filter((l) => l.id !== id);
-      setStore('leads', updated);
+      await leadsApi.delete(id);
       return true;
     },
   },
 
   // Deals API
   deals: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
         const res = await dealsApi.getPipeline();
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-          return res.data;
-        }
-      } catch (e) {}
-      return getStore('deals', []);
+        const list = extractList(res);
+        if (list.length > 0) return list;
+        const pageRes = await dealsApi.getAll(params);
+        return extractList(pageRes);
+      } catch (e) {
+        console.warn('Backend deals API unavailable:', e.message);
+        return [];
+      }
     },
-    updateStage: async (id, stage) => {
+    getById: async (id) => {
       try {
-        const res = await dealsApi.updateStage(id, stage);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('deals', []);
-      const updated = list.map((d) => (d.id === id ? { ...d, stage } : d));
-      setStore('deals', updated);
-      return updated.find((d) => d.id === id);
+        const res = await dealsApi.getById(id);
+        return res?.data || res;
+      } catch (e) {
+        return null;
+      }
+    },
+    updateStage: async (id, stageOrPayload) => {
+      const payload = typeof stageOrPayload === 'string' ? { stage: stageOrPayload } : stageOrPayload;
+      const res = await dealsApi.updateStage(id, payload);
+      return res?.data || res;
     },
     create: async (deal) => {
-      try {
-        const res = await dealsApi.create(deal);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('deals', []);
-      const newDeal = {
-        ...deal,
-        id: `deal_${Date.now()}`,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      const updated = [newDeal, ...list];
-      setStore('deals', updated);
-      return newDeal;
+      const res = await dealsApi.create(deal);
+      return res?.data || res;
+    },
+    update: async (id, deal) => {
+      const res = await dealsApi.update(id, deal);
+      return res?.data || res;
+    },
+    delete: async (id) => {
+      await dealsApi.delete(id);
+      return true;
+    },
+    getPipelineMetrics: async (pipelineId) => {
+      const res = await dealsApi.getPipelineMetrics(pipelineId);
+      return res?.data || res;
+    },
+    getForecast: async () => {
+      const res = await dealsApi.getRevenueForecast();
+      return res?.data || res;
     },
   },
 
   // Contacts API
   contacts: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await contactsApi.getAll();
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('contacts', []);
+        const res = await contactsApi.getAll(params);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend contacts API unavailable:', e.message);
+        return [];
+      }
+    },
+    getById: async (id) => {
+      try {
+        const res = await contactsApi.getById(id);
+        return res?.data || res;
+      } catch (e) {
+        return null;
+      }
     },
     create: async (contact) => {
-      try {
-        const res = await contactsApi.create(contact);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('contacts', []);
-      const newContact = { ...contact, id: `cont_${Date.now()}`, createdAt: new Date().toISOString().split('T')[0] };
-      const updated = [newContact, ...list];
-      setStore('contacts', updated);
-      return newContact;
+      const res = await contactsApi.create(contact);
+      return res?.data || res;
+    },
+    update: async (id, contact) => {
+      const res = await contactsApi.update(id, contact);
+      return res?.data || res;
+    },
+    delete: async (id) => {
+      await contactsApi.delete(id);
+      return true;
     },
   },
 
   // Companies API
   companies: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await companiesApi.getAll();
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('companies', []);
+        const res = await companiesApi.getAll(params);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend companies API unavailable:', e.message);
+        return [];
+      }
+    },
+    getById: async (id) => {
+      try {
+        const res = await companiesApi.getById(id);
+        return res?.data || res;
+      } catch (e) {
+        return null;
+      }
     },
     create: async (company) => {
-      try {
-        const res = await companiesApi.create(company);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('companies', []);
-      const newCompany = { ...company, id: `comp_${Date.now()}`, createdAt: new Date().toISOString().split('T')[0] };
-      const updated = [newCompany, ...list];
-      setStore('companies', updated);
-      return newCompany;
+      const res = await companiesApi.create(company);
+      return res?.data || res;
+    },
+    update: async (id, company) => {
+      const res = await companiesApi.update(id, company);
+      return res?.data || res;
+    },
+    delete: async (id) => {
+      await companiesApi.delete(id);
+      return true;
     },
   },
 
   // Tasks API
   tasks: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await tasksApi.getAll();
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('tasks', []);
+        const res = await tasksApi.getAll(params);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend tasks API unavailable:', e.message);
+        return [];
+      }
+    },
+    getById: async (id) => {
+      try {
+        const res = await tasksApi.getById(id);
+        return res?.data || res;
+      } catch (e) {
+        return null;
+      }
     },
     toggleStatus: async (id) => {
-      try {
-        const res = await tasksApi.complete(id);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('tasks', []);
-      const updated = list.map((t) =>
-        t.id === id ? { ...t, status: t.status === 'COMPLETED' ? 'TODO' : 'COMPLETED' } : t
-      );
-      setStore('tasks', updated);
-      return updated;
+      const res = await tasksApi.complete(id);
+      return res?.data || res;
     },
     create: async (task) => {
-      try {
-        const res = await tasksApi.create(task);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('tasks', []);
-      const newTask = { ...task, id: `task_${Date.now()}` };
-      const updated = [newTask, ...list];
-      setStore('tasks', updated);
-      return newTask;
+      const res = await tasksApi.create(task);
+      return res?.data || res;
+    },
+    update: async (id, task) => {
+      const res = await tasksApi.update(id, task);
+      return res?.data || res;
+    },
+    delete: async (id) => {
+      await tasksApi.delete(id);
+      return true;
     },
   },
 
   // Activities API
   activities: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await activitiesApi.getAll();
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('activities', []);
+        const res = await activitiesApi.getAll(params);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend activities API unavailable:', e.message);
+        return [];
+      }
+    },
+    getByEntity: async (type, id) => {
+      try {
+        const res = await activitiesApi.getByEntity(type, id);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
     },
     create: async (act) => {
-      try {
-        const res = await activitiesApi.create(act);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('activities', []);
-      const newAct = { ...act, id: `act_${Date.now()}`, createdAt: new Date().toISOString() };
-      const updated = [newAct, ...list];
-      setStore('activities', updated);
-      return newAct;
+      const res = await activitiesApi.create(act);
+      return res?.data || res;
     },
   },
 
@@ -302,134 +261,294 @@ export const api = {
     getAll: async () => {
       try {
         const res = await calendarApi.getAll();
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch (e) {}
-      return getStore('calendar', []);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend calendar API unavailable:', e.message);
+        return [];
+      }
     },
     create: async (event) => {
-      try {
-        const res = await calendarApi.create(event);
-        if (res.data) return res.data;
-      } catch (e) {}
-      const list = getStore('calendar', []);
-      const newEvent = { ...event, id: `cal_${Date.now()}` };
-      const updated = [newEvent, ...list];
-      setStore('calendar', updated);
-      return newEvent;
+      const res = await calendarApi.create(event);
+      return res?.data || res;
+    },
+    update: async (id, event) => {
+      const res = await calendarApi.update(id, event);
+      return res?.data || res;
+    },
+    delete: async (id) => {
+      await calendarApi.delete(id);
+      return true;
     },
   },
 
-  // Products, Invoices, Workflows, Notifications, Users
+  // Support Tickets API
+  tickets: {
+    getAll: async (params) => {
+      try {
+        const res = await ticketsApi.getTickets(params);
+        return extractList(res);
+      } catch (e) {
+        console.warn('Backend tickets API unavailable:', e.message);
+        return [];
+      }
+    },
+    getById: async (id) => {
+      const res = await ticketsApi.getTicketById(id);
+      return res?.data || res;
+    },
+    create: async (data) => {
+      const res = await ticketsApi.createTicket(data);
+      return res?.data || res;
+    },
+    updateStatus: async (id, status) => {
+      const res = await ticketsApi.updateStatus(id, status);
+      return res?.data || res;
+    },
+    assign: async (id, assigneeId) => {
+      const res = await ticketsApi.assignTicket(id, assigneeId);
+      return res?.data || res;
+    },
+    getComments: async (id) => {
+      const res = await ticketsApi.getComments(id);
+      return extractList(res);
+    },
+    addComment: async (id, commentData) => {
+      const res = await ticketsApi.addComment(id, commentData);
+      return res?.data || res;
+    },
+    getMetrics: async () => {
+      const res = await ticketsApi.getMetrics();
+      return res?.data || res;
+    },
+  },
+
+  // Knowledge Base & RAG API
+  knowledge: {
+    getArticles: async (params) => {
+      try {
+        const res = await knowledgeApi.getArticles(params);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    getArticleById: async (id) => {
+      const res = await knowledgeApi.getArticleById(id);
+      return res?.data || res;
+    },
+    createArticle: async (data) => {
+      const res = await knowledgeApi.createArticle(data);
+      return res?.data || res;
+    },
+    updateArticle: async (id, data) => {
+      const res = await knowledgeApi.updateArticle(id, data);
+      return res?.data || res;
+    },
+    deleteArticle: async (id) => {
+      await knowledgeApi.deleteArticle(id);
+      return true;
+    },
+    getCategories: async () => {
+      const res = await knowledgeApi.getCategories();
+      return extractList(res);
+    },
+    askQuestion: async (question) => {
+      const res = await knowledgeApi.askQuestion({ question, topK: 3 });
+      return res?.data || res;
+    },
+  },
+
+  // Products API
   products: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await apiClient.get('/products');
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('products', []);
+        const res = await apiClient.get('/products', { params });
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    create: async (product) => {
+      const res = await apiClient.post('/products', product);
+      return res?.data || res;
     },
   },
 
+  // Invoices API
   invoices: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await apiClient.get('/invoices');
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('invoices', []);
+        const res = await apiClient.get('/invoices', { params });
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    create: async (invoice) => {
+      const res = await apiClient.post('/invoices', invoice);
+      return res?.data || res;
     },
   },
 
+  // Workflows API
   workflows: {
     getAll: async () => {
       try {
         const res = await apiClient.get('/workflows');
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch (e) {}
-      return getStore('workflows', []);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    create: async (rule) => {
+      const res = await apiClient.post('/workflows', rule);
+      return res?.data || res;
+    },
+    update: async (id, rule) => {
+      const res = await apiClient.put(`/workflows/${id}`, rule);
+      return res?.data || res;
+    },
+    toggle: async (id) => {
+      const res = await apiClient.patch(`/workflows/${id}/toggle`);
+      return res?.data || res;
+    },
+    delete: async (id) => {
+      await apiClient.delete(`/workflows/${id}`);
+      return true;
+    },
+    executeManually: async (id, payload) => {
+      const res = await apiClient.post(`/workflows/${id}/execute`, payload);
+      return res?.data || res;
     },
   },
 
+  // Notifications API
   notifications: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await notificationsApi.getAll();
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('notifications', []);
-    },
-    markAllRead: async () => {
-      const list = getStore('notifications', []).map((n) => ({ ...n, isRead: true }));
-      setStore('notifications', list);
-      return list;
+        const res = await notificationsApi.getAll(params);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
     },
   },
 
+  // Audit Logs API
   auditLogs: {
-    getAll: async () => {
+    getAll: async (params) => {
       try {
-        const res = await apiClient.get('/audit-logs');
-        if (res.data) {
-          const list = res.data?.content || (Array.isArray(res.data) ? res.data : []);
-          if (list.length > 0) return list;
-        }
-      } catch (e) {}
-      return getStore('audit_logs', []);
+        const res = await apiClient.get('/audit-logs', { params });
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
     },
   },
 
-  approvals: approvalsApi,
-
-  customFields: {
-    getAll: async () => getStore('custom_fields', []),
+  // Approvals API
+  approvals: {
+    getAll: async (params) => {
+      try {
+        const res = await approvalsApi.getApprovals(params);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    submit: async (approval) => {
+      const res = await approvalsApi.submit(approval);
+      return res?.data || res;
+    },
+    review: async (id, decision, notes) => {
+      const res = await approvalsApi.review(id, { decision, notes });
+      return res?.data || res;
+    },
   },
 
+  // Users API
   users: {
     getAll: async () => {
       try {
         const res = await usersApi.getAll();
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch (e) {}
-      return getStore('users', []);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
     },
     getTeam: async () => {
       try {
         const res = await usersApi.getTeam();
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch (e) {}
-      return getStore('users', []);
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    update: async (id, user) => {
+      const res = await usersApi.update(id, user);
+      return res?.data || res;
     },
   },
 
+  // Developer Platform API
+  developer: {
+    getApiKeys: async () => {
+      try {
+        const res = await developerApi.getApiKeys();
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    createApiKey: async (req) => {
+      const res = await developerApi.createApiKey(req);
+      return res?.data || res;
+    },
+    revokeApiKey: async (id) => {
+      await developerApi.revokeApiKey(id);
+      return true;
+    },
+    getWebhooks: async () => {
+      try {
+        const res = await developerApi.getWebhooks();
+        return extractList(res);
+      } catch (e) {
+        return [];
+      }
+    },
+    createWebhook: async (req) => {
+      const res = await developerApi.createWebhook(req);
+      return res?.data || res;
+    },
+    deleteWebhook: async (id) => {
+      await developerApi.deleteWebhook(id);
+      return true;
+    },
+  },
+
+  // Search API
+  search: {
+    query: async (q, types = 'ALL', limit = 10) => {
+      const res = await apiClient.get('/search', { params: { q, types, limit } });
+      return res?.data || res;
+    },
+  },
+
+  // Reports API
   reports: {
     getDashboard: async () => {
       try {
         const res = await reportsApi.getDashboard();
-        if (res.data) return res.data;
-      } catch (e) {}
-      const leads = getStore('leads', []);
-      const deals = getStore('deals', []);
-      const tasks = getStore('tasks', []);
-      const wonDeals = deals.filter((d) => d.stage === 'CLOSED_WON');
-      const revenue = wonDeals.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
-      const openDeals = deals.filter((d) => d.stage !== 'CLOSED_WON' && d.stage !== 'CLOSED_LOST');
-      const completedTasks = tasks.filter((t) => t.status === 'COMPLETED').length;
-      return {
-        totalLeads: leads.length,
-        openDeals: openDeals.length,
-        revenue: revenue,
-        conversionRate: leads.length > 0 ? `${Math.round((wonDeals.length / leads.length) * 100)}%` : '0%',
-        completedTasks: completedTasks,
-      };
+        return res?.data || res;
+      } catch (e) {
+        return {
+          totalLeads: 0,
+          openDeals: 0,
+          revenue: 0,
+          conversionRate: '0%',
+          completedTasks: 0,
+        };
+      }
     },
   },
 };

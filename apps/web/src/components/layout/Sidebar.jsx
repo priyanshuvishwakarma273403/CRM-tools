@@ -24,6 +24,8 @@ import {
   Layers,
   FileBox,
   ShieldAlert,
+  LifeBuoy,
+  BookOpen,
 } from 'lucide-react';
 import { useTenantStore } from '../../store/useTenantStore';
 
@@ -34,15 +36,17 @@ export const Sidebar = () => {
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/app' },
     { label: 'Customer 360', icon: Users, path: '/app/customers', badge: '360' },
-    { label: 'Leads', icon: UserCheck, path: '/app/leads', badge: '5' },
+    { label: 'Leads', icon: UserCheck, path: '/app/leads' },
     { label: 'Contacts', icon: Users, path: '/app/contacts' },
     { label: 'Companies', icon: Building2, path: '/app/companies' },
-    { label: 'Deals Pipeline', icon: Briefcase, path: '/app/deals', badge: '15' },
-    { label: 'Tasks', icon: CheckSquare, path: '/app/tasks', badge: '4' },
+    { label: 'Deals Pipeline', icon: Briefcase, path: '/app/deals' },
+    { label: 'Tasks', icon: CheckSquare, path: '/app/tasks' },
     { label: 'Activities', icon: Activity, path: '/app/activities' },
     { label: 'Calendar', icon: Calendar, path: '/app/calendar' },
+    { label: 'Support Tickets', icon: LifeBuoy, path: '/app/tickets' },
+    { label: 'Knowledge RAG', icon: BookOpen, path: '/app/knowledge' },
     { label: 'AI Copilot', icon: Bot, path: '/app/ai-copilot', highlight: true },
-    { label: 'Action Approvals', icon: ShieldAlert, path: '/app/approvals', badge: 'AI' },
+    { label: 'Action Approvals', icon: ShieldAlert, path: '/app/approvals' },
     { label: 'Products', icon: Package, path: '/app/products' },
     { label: 'Invoices', icon: FileText, path: '/app/invoices' },
     { label: 'Payments', icon: CreditCard, path: '/app/payments' },
@@ -81,7 +85,7 @@ export const Sidebar = () => {
 
         <button
           onClick={toggleSidebar}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
         </button>

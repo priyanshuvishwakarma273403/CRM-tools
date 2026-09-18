@@ -15,3 +15,7 @@ export { communicationsApi } from './communicationsApi';
 export { aiApi } from './aiApi';
 export { performanceApi } from './performanceApi';
 export { approvalsApi } from './approvalsApi';
+export { ticketsApi } from './ticketsApi';
+export { knowledgeApi } from './knowledgeApi';
+export { developerApi } from './developerApi';
+export { mcpApi } from './mcpApi';

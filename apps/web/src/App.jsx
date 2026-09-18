@@ -56,6 +56,8 @@ import { FilesPage } from './features/files/FilesPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { AiAssistantPage } from './features/ai-copilot/AiAssistantPage';
 import { ApprovalCenterPage } from './features/approvals/ApprovalCenterPage';
+import { TicketsPage } from './features/support/TicketsPage';
+import { KnowledgePage } from './features/knowledge/KnowledgePage';
 import CustomersPage from './pages/Customers';
 import CommandPalette from './components/CommandPalette';
 import AiCopilotDrawer from './components/AiCopilotDrawer';
@@ -136,6 +138,8 @@ export default function App() {
           <Route path="tasks" element={<TasksPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="calendar" element={<CalendarPage />} />
+          <Route path="tickets" element={<TicketsPage />} />
+          <Route path="knowledge" element={<KnowledgePage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="invoices" element={<InvoicesPage />} />
           <Route path="payments" element={<PaymentsPage />} />

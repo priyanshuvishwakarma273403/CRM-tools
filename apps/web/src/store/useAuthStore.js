@@ -9,6 +9,7 @@ export const useAuthStore = create(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
+      isFetchingProfile: false,
 
       login: (userData, accessToken, refreshToken) => {
         if (accessToken) {
@@ -45,20 +46,24 @@ export const useAuthStore = create(
       },
 
       fetchProfile: async () => {
+        set({ isFetchingProfile: true });
         try {
           const res = await authApi.getCurrentUser();
-          if (res?.data?.user) {
+          const data = res?.data;
+          if (data?.user) {
             set({
               user: {
-                ...res.data.user,
-                organizationId: res.data.organization?.id,
-                organizationName: res.data.organization?.name,
+                ...data.user,
+                organizationId: data.organization?.id,
+                organizationName: data.organization?.name,
               },
               isAuthenticated: true,
             });
           }
         } catch (e) {
-          console.warn('Profile fetch skipped (running offline/fallback mode)');
+          console.warn('Profile fetch skipped or unauthorized:', e.message);
+        } finally {
+          set({ isFetchingProfile: false });
         }
       },
 
