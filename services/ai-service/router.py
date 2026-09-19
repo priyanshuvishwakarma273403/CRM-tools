@@ -73,6 +73,8 @@ class ModelRouter:
         """
         Executes prompt through the context firewall and selected model provider with cost/latency telemetry.
         """
+        import os
+        import httpx
         start_time = time.time()
 
         # 1. Inspect and sanitize via AI Context Firewall
@@ -80,24 +82,67 @@ class ModelRouter:
 
         # 2. Select model
         routing = cls.select_model(task_type, privacy_mode)
+        provider = routing["provider"]
+        model = routing["model"]
 
-        # 3. Simulate token consumption metrics
+        generated_text = None
+        
+        # 3. Attempt real LLM API call if credentials present
+        try:
+            if provider == "OPENAI" and os.environ.get("OPENAI_API_KEY"):
+                api_key = os.environ["OPENAI_API_KEY"]
+                resp = httpx.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": [{"role": "user", "content": sanitized_prompt}], "max_tokens": 500},
+                    timeout=10.0
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    generated_text = data["choices"][0]["message"]["content"]
+            elif provider == "GEMINI" and os.environ.get("GEMINI_API_KEY"):
+                api_key = os.environ["GEMINI_API_KEY"]
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                resp = httpx.post(
+                    url,
+                    headers={"Content-Type": "application/json"},
+                    json={"contents": [{"parts": [{"text": sanitized_prompt}]}]},
+                    timeout=10.0
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    generated_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            elif provider == "LOCAL_OLLAMA":
+                ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+                resp = httpx.post(
+                    f"{ollama_url}/api/generate",
+                    json={"model": model, "prompt": sanitized_prompt, "stream": False},
+                    timeout=5.0
+                )
+                if resp.status_code == 200:
+                    generated_text = resp.json().get("response")
+        except Exception:
+            generated_text = None
+
+        # 4. Token consumption telemetry
         prompt_tokens = max(1, len(sanitized_prompt) // 4)
-        completion_tokens = 150
-        elapsed_ms = int((time.time() - start_time) * 1000) + 45
+        completion_tokens = max(1, len(generated_text) // 4) if generated_text else 150
+        elapsed_ms = int((time.time() - start_time) * 1000)
 
-        provider_info = cls.PROVIDERS.get(routing["provider"], cls.PROVIDERS["OPENAI"])
+        provider_info = cls.PROVIDERS.get(provider, cls.PROVIDERS["OPENAI"])
         estimated_cost = (prompt_tokens / 1000.0 * provider_info["cost_per_1k_input"]) + \
                          (completion_tokens / 1000.0 * provider_info["cost_per_1k_output"])
 
         return {
-            "provider": routing["provider"],
-            "model": routing["model"],
+            "provider": provider,
+            "model": model,
             "tier": routing["tier"],
-            "latency_ms": elapsed_ms,
+            "latency_ms": max(elapsed_ms, 12),
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "estimated_cost_usd": round(estimated_cost, 6),
             "dlp_metrics": dlp_metrics,
+            "generated_text": generated_text,
             "sanitized_preview": sanitized_prompt[:100] + ("..." if len(sanitized_prompt) > 100 else "")
         }
+
